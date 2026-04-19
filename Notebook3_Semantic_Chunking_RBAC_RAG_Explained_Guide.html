@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notebook 3 — Semantic Chunking + RBAC RAG</title>
+
+<style>
+:root{
+  --ink:#1f2937;
+  --muted:#4b5563;
+  --line:#d1d5db;
+  --panel:#f8fafc;
+  --brand:#1d4ed8;
+  --brand2:#0f766e;
+  --soft:#eef4ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color:var(--ink);
+  background:#ffffff;
+  line-height:1.6;
+}
+header{
+  background:linear-gradient(90deg, #eff6ff, #ecfeff);
+  border-bottom:1px solid var(--line);
+  padding:36px 24px 28px;
+}
+.wrap{
+  max-width:1100px;
+  margin:0 auto;
+}
+h1{
+  margin:0 0 8px 0;
+  font-size:34px;
+  color:#0f172a;
+}
+.subtitle{
+  color:var(--muted);
+  font-size:18px;
+}
+section{
+  padding:28px 24px;
+}
+h2{
+  margin:0 0 14px 0;
+  font-size:26px;
+  color:#111827;
+  border-bottom:2px solid #e5e7eb;
+  padding-bottom:8px;
+}
+h3{
+  margin:18px 0 8px 0;
+  font-size:21px;
+  color:#0f172a;
+}
+p{margin:10px 0}
+.card{
+  background:var(--panel);
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:18px 18px;
+  margin:16px 0;
+}
+.note{
+  background:#fff7ed;
+  border-left:5px solid #f59e0b;
+  padding:14px 16px;
+  border-radius:10px;
+}
+.tip{
+  background:#ecfeff;
+  border-left:5px solid #14b8a6;
+  padding:14px 16px;
+  border-radius:10px;
+}
+.code{
+  background:#0f172a;
+  color:#e2e8f0;
+  padding:14px 16px;
+  border-radius:12px;
+  font-family: Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-x:auto;
+}
+.small{font-size:14px;color:var(--muted)}
+.flow{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  margin:18px 0;
+}
+.flow-row{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:12px;
+}
+.box{
+  min-width:210px;
+  max-width:260px;
+  background:white;
+  border:2px solid #bfdbfe;
+  border-radius:16px;
+  padding:14px 16px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.05);
+  text-align:center;
+}
+.box strong{
+  display:block;
+  color:#1d4ed8;
+  margin-bottom:4px;
+}
+.arrow{
+  font-size:28px;
+  color:#2563eb;
+  line-height:1;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th, td{
+  border:1px solid var(--line);
+  padding:10px 12px;
+  vertical-align:top;
+}
+th{
+  background:#eff6ff;
+  text-align:left;
+}
+ul,ol{margin:10px 0 10px 24px}
+footer{
+  margin-top:24px;
+  border-top:1px solid var(--line);
+  text-align:center;
+  color:#6b7280;
+  padding:22px;
+  font-size:14px;
+}
+.tag{
+  display:inline-block;
+  background:#eff6ff;
+  color:#1d4ed8;
+  border:1px solid #bfdbfe;
+  border-radius:999px;
+  padding:5px 10px;
+  margin:4px 6px 0 0;
+  font-size:13px;
+}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Notebook 3 — Semantic Chunking + RBAC RAG</h1>
+    <div class="subtitle">A student-friendly guide to the SageMaker notebook that combines Bedrock embeddings, secure retrieval, RBAC filtering, and grounded answer generation.</div>
+  </div>
+</header>
+<div class="wrap">
+
+<section>
+  <h2>1. What this notebook does</h2>
+  <div class="card">
+    <p>This notebook shows how to build a <strong>secure retrieval-augmented generation (RAG)</strong> workflow in SageMaker using Bedrock and documents stored in S3.</p>
+    <p>It combines two ideas in one pipeline:</p>
+    <ul>
+      <li><strong>Policy RAG</strong> for normal questions such as leave policy, notice period, or remote work rules.</li>
+      <li><strong>RBAC-controlled salary access</strong> for salary questions, where access depends on the requester’s employee level.</li>
+    </ul>
+    <p>Instead of using a local vector database, the notebook creates embeddings with Bedrock, keeps everything in memory, ranks content with similarity, filters it based on authorization, and then sends only the <strong>authorized context</strong> to the LLM.</p>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Inputs used by the notebook</h3>
+      <ul>
+        <li>Policy documents from <strong>S3</strong></li>
+        <li>A salary roster CSV from <strong>S3</strong></li>
+        <li>A requester employee ID entered by the learner</li>
+        <li>A question entered by the learner</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Outputs produced by the notebook</h3>
+      <ul>
+        <li>A retrieval audit table</li>
+        <li>An authorized context table</li>
+        <li>An LLM-generated RAG answer</li>
+        <li>A one-row request audit summary</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>2. End-to-end flow</h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="box"><strong>Step 1</strong>Configure AWS region, S3 paths, model IDs, and runtime limits.</div>
+      <div class="box"><strong>Step 2</strong>Load policy documents and salary roster from S3 into DataFrames and text objects.</div>
+      <div class="box"><strong>Step 3</strong>Split policy text into chunks and convert salary rows into retrieval-ready text.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 4</strong>Create Bedrock embeddings and build an in-memory retrieval matrix.</div>
+      <div class="box"><strong>Step 5</strong>Apply RBAC rules and create a retrieval audit table.</div>
+      <div class="box"><strong>Step 6</strong>Send only authorized evidence to the LLM and generate a grounded answer.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 7</strong>Create a one-row audit summary of the secure RAG transaction.</div>
+      <div class="box"><strong>Mini-hack</strong>Change requester IDs and questions to test secure retrieval behavior.</div>
+    </div>
+  </div>
+  <div class="tip">
+    <strong>Key idea:</strong> The notebook does not send all retrieved content to the model. It first checks what the requester is allowed to see, then forwards only the authorized context.
+  </div>
+</section>
+
+<section>
+  <h2>3. Step-by-step explanation</h2>
+
+  <div class="card">
+    <h3>Step 1 — Configuration</h3>
+    <p>This step defines the notebook settings. It loads libraries, sets the AWS region, identifies the S3 bucket and prefixes, and specifies which Bedrock models will be used for embeddings and answer generation.</p>
+    <p>It also sets limits such as chunk size, top-k retrieval count, and how many candidate rows should be over-fetched before filtering.</p>
+    <div class="note"><strong>Why this matters:</strong> Centralized configuration makes the notebook easier to understand and change. Learners can quickly see which parameters control the pipeline.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 2 — Load policy documents and salary roster from S3</h3>
+    <p>This step connects to S3 and reads two types of input:</p>
+    <ol>
+      <li><strong>Policy documents</strong> in <code>.docx</code>, <code>.txt</code>, or <code>.md</code> format</li>
+      <li><strong>The salary roster CSV</strong> that contains employee ID, employee name, level, role, monthly salary, and annual salary</li>
+    </ol>
+    <p>Normal policy questions are answered from the policy documents. Salary questions use the salary roster as the controlled source of truth.</p>
+    <p>The result of this step is a clean in-memory representation of the organization’s knowledge that the next steps can chunk and index.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 3 — Build policy chunks and salary retrieval rows</h3>
+    <p>This step prepares the content for retrieval.</p>
+    <ul>
+      <li><strong>Policy documents</strong> are split into smaller text chunks so retrieval can be more precise.</li>
+      <li><strong>Salary rows</strong> are converted into short text records so each row can also be embedded and retrieved like a document chunk.</li>
+    </ul>
+    <p>All chunks and rows are combined into a single table, often referred to as the retrieval corpus. Each item carries metadata such as document type, chunk ID, and employee ID.</p>
+    <div class="tip"><strong>What to observe:</strong> After this step, the notebook has transformed raw files into retrieval-ready units. This is the point where large documents become searchable blocks.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 4 — Create the retrieval matrix with Bedrock embeddings</h3>
+    <p>In this step, each retrieval unit is converted into a numeric vector using a Bedrock embedding model. The notebook then stacks those vectors into an in-memory matrix.</p>
+    <p>When the learner asks a question, the question is also embedded. The notebook compares the question vector to the corpus vectors and ranks items by similarity.</p>
+    <p>Because this notebook is designed for SageMaker classroom use, retrieval happens in memory instead of through FAISS or a local vector store.</p>
+    <div class="code">Document chunk → Embedding vector
+Question → Embedding vector
+Similarity score → Ranked candidates</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 5 — RBAC rules and retrieval audit table</h3>
+    <p>This is the security layer of the notebook.</p>
+    <p>The notebook determines whether the question is about salary. If it is, it reads the requester’s level <strong>directly from the salary DataFrame</strong> using the requester employee ID provided by the learner.</p>
+    <p>It then applies role-based access control:</p>
+    <ul>
+      <li>Lower levels can typically view only their own salary</li>
+      <li>Higher levels can view more, depending on the rule defined in the notebook</li>
+      <li>For non-salary questions, salary rows are hidden completely</li>
+    </ul>
+    <p>The <strong>retrieval audit table</strong> shows every highly ranked item and explains whether it was <strong>allowed</strong> or <strong>blocked</strong> and why.</p>
+    <table>
+      <tr><th>Column</th><th>Meaning</th></tr>
+      <tr><td>rank</td><td>Where the item appeared in retrieval order</td></tr>
+      <tr><td>doc_type</td><td>Whether the item is a policy chunk or a salary row</td></tr>
+      <tr><td>access_decision</td><td>Whether the item was allowed into final context</td></tr>
+      <tr><td>reason</td><td>Why it was allowed or blocked</td></tr>
+      <tr><td>employee_id</td><td>The employee tied to that salary row, if applicable</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Step 6 — LLM-generated answer over authorized context only</h3>
+    <p>This step turns the notebook into a full RAG system.</p>
+    <p>The notebook creates an <strong>authorized context</strong> by selecting only the rows that survived retrieval and RBAC filtering. It then builds a prompt that tells the Bedrock model to answer only from that authorized evidence.</p>
+    <p>This means:</p>
+    <ul>
+      <li>Normal policy questions are answered from policy chunks</li>
+      <li>Salary questions are answered only from salary rows the requester is allowed to see</li>
+      <li>If the needed evidence is not authorized or not present, the model should say it does not know from the authorized context</li>
+    </ul>
+    <p>The notebook displays the exact rows sent to the model, followed by the final LLM-generated RAG answer.</p>
+    <div class="note"><strong>Most important idea:</strong> Retrieval happens first, authorization happens second, and only then does generation happen.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 7 — Request audit summary</h3>
+    <p>This step creates a compact one-row table that summarizes the full transaction.</p>
+    <p>It records useful audit fields such as:</p>
+    <ul>
+      <li>The requester employee ID</li>
+      <li>The requester level that was read from the salary DataFrame, when relevant</li>
+      <li>Whether the question was a salary question or a normal policy question</li>
+      <li>How many items were retrieved</li>
+      <li>How many were finally authorized</li>
+      <li>The final answer returned by the model</li>
+    </ul>
+    <p>This summary is helpful for debugging, governance reviews, and explaining secure AI behavior to learners.</p>
+  </div>
+
+  <div class="card">
+    <h3>Mini-hack — Secure retrieval challenge</h3>
+    <p>The mini-hack invites learners to try several combinations of requester IDs and questions.</p>
+    <p>Good experiments include:</p>
+    <ul>
+      <li>A normal policy question with no requester ID</li>
+      <li>A salary question where the requester asks for their own salary</li>
+      <li>A salary question where the requester asks for another employee’s salary</li>
+      <li>The same question with a different requester ID to see how authorization changes the answer</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>4. What learners should notice while running the notebook</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Notice 1 — Retrieval is not enough</h3>
+      <p>The top retrieved item may not be safe to use. Authorization decides what can actually be shown to the model.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 2 — Salary and policy questions follow different paths</h3>
+      <p>Policy questions search documents. Salary questions search salary rows and apply RBAC rules before generation.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 3 — The answer quality depends on the authorized context</h3>
+      <p>If the final context is accurate and authorized, the model can answer well. If the correct evidence is missing, the model should not guess.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>5. Suggested experiments</h2>
+  <div class="card">
+    <ol>
+      <li>Ask a normal question such as <code>What is the leave policy?</code> and keep requester ID blank.</li>
+      <li>Ask a salary question for your own employee ID.</li>
+      <li>Ask a salary question for another employee ID and see whether the audit table blocks it.</li>
+      <li>Change the requester employee ID and repeat the same question.</li>
+      <li>Observe how the retrieval audit table, authorized context table, and final answer change together.</li>
+    </ol>
+  </div>
+</section>
+
+<footer>© 2026 TekFrameworks</footer>
+</div>
+</body>
+</html>

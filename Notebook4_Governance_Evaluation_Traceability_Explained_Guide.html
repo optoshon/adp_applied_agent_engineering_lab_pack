@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notebook 4 — Governance, Evaluation & Traceability</title>
+
+<style>
+:root{
+  --ink:#1f2937;
+  --muted:#4b5563;
+  --line:#d1d5db;
+  --panel:#f8fafc;
+  --brand:#1d4ed8;
+  --brand2:#0f766e;
+  --soft:#eef4ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color:var(--ink);
+  background:#ffffff;
+  line-height:1.6;
+}
+header{
+  background:linear-gradient(90deg, #eff6ff, #ecfeff);
+  border-bottom:1px solid var(--line);
+  padding:36px 24px 28px;
+}
+.wrap{
+  max-width:1100px;
+  margin:0 auto;
+}
+h1{
+  margin:0 0 8px 0;
+  font-size:34px;
+  color:#0f172a;
+}
+.subtitle{
+  color:var(--muted);
+  font-size:18px;
+}
+section{
+  padding:28px 24px;
+}
+h2{
+  margin:0 0 14px 0;
+  font-size:26px;
+  color:#111827;
+  border-bottom:2px solid #e5e7eb;
+  padding-bottom:8px;
+}
+h3{
+  margin:18px 0 8px 0;
+  font-size:21px;
+  color:#0f172a;
+}
+p{margin:10px 0}
+.card{
+  background:var(--panel);
+  border:1px solid #e5e7eb;
+  border-radius:16px;
+  padding:18px 18px;
+  margin:16px 0;
+}
+.note{
+  background:#fff7ed;
+  border-left:5px solid #f59e0b;
+  padding:14px 16px;
+  border-radius:10px;
+}
+.tip{
+  background:#ecfeff;
+  border-left:5px solid #14b8a6;
+  padding:14px 16px;
+  border-radius:10px;
+}
+.code{
+  background:#0f172a;
+  color:#e2e8f0;
+  padding:14px 16px;
+  border-radius:12px;
+  font-family: Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-x:auto;
+}
+.small{font-size:14px;color:var(--muted)}
+.flow{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  margin:18px 0;
+}
+.flow-row{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:12px;
+}
+.box{
+  min-width:210px;
+  max-width:260px;
+  background:white;
+  border:2px solid #bfdbfe;
+  border-radius:16px;
+  padding:14px 16px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.05);
+  text-align:center;
+}
+.box strong{
+  display:block;
+  color:#1d4ed8;
+  margin-bottom:4px;
+}
+.arrow{
+  font-size:28px;
+  color:#2563eb;
+  line-height:1;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:16px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:10px;
+}
+th, td{
+  border:1px solid var(--line);
+  padding:10px 12px;
+  vertical-align:top;
+}
+th{
+  background:#eff6ff;
+  text-align:left;
+}
+ul,ol{margin:10px 0 10px 24px}
+footer{
+  margin-top:24px;
+  border-top:1px solid var(--line);
+  text-align:center;
+  color:#6b7280;
+  padding:22px;
+  font-size:14px;
+}
+.tag{
+  display:inline-block;
+  background:#eff6ff;
+  color:#1d4ed8;
+  border:1px solid #bfdbfe;
+  border-radius:999px;
+  padding:5px 10px;
+  margin:4px 6px 0 0;
+  font-size:13px;
+}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Notebook 4 — Governance, Evaluation & Traceability</h1>
+    <div class="subtitle">A student-friendly guide to the notebook that adds guardrails, audit logging, prompt comparison, and Bedrock RAG evaluation behavior.</div>
+  </div>
+</header>
+<div class="wrap">
+
+<section>
+  <h2>1. What this notebook does</h2>
+  <div class="card">
+    <p>This notebook demonstrates how to add <strong>governance, evaluation, and traceability</strong> to a simple enterprise assistant.</p>
+    <p>It starts with a small policy assistant, then adds safety checks, audit logging, tabular review, prompt comparison, and a Bedrock-based RAG comparison between <strong>strict</strong> and <strong>loose</strong> answering behavior.</p>
+    <p>The main goal is to show that building an enterprise assistant is not only about generating answers. It is also about:</p>
+    <ul>
+      <li>controlling what the assistant is allowed to answer</li>
+      <li>recording what happened during each request</li>
+      <li>reviewing behavior in tables</li>
+      <li>seeing how prompt design affects groundedness</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>2. End-to-end flow</h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="box"><strong>Step 1</strong>Create a simple assistant from a small policy store.</div>
+      <div class="box"><strong>Step 2</strong>Add a pre-execution guardrail to block risky topics.</div>
+      <div class="box"><strong>Step 3</strong>Wrap the assistant with logging so each request becomes auditable.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 4</strong>Convert logs into a DataFrame so the behavior can be reviewed clearly.</div>
+      <div class="box"><strong>Step 5</strong>Compare strict and loose prompt styles to study drift.</div>
+      <div class="box"><strong>Step 6</strong>Run a Bedrock RAG comparison using retrieved policy context.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Mini-hack</strong>Add one more governance control or review rule.</div>
+      <div class="box"><strong>Wrap-up</strong>Understand how governance improves trust, safety, and explainability.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Step-by-step explanation</h2>
+
+  <div class="card">
+    <h3>Step 1 — Define a simple enterprise assistant</h3>
+    <p>The notebook begins with a very small knowledge source called <code>POLICY_STORE</code>. This is a simple dictionary of policy names and policy text.</p>
+    <p>The assistant answers by finding relevant policy entries and returning a response. This provides a minimal baseline before any governance controls are added.</p>
+    <div class="tip"><strong>Purpose of this step:</strong> It creates the simplest possible assistant so that the later governance layers are easy to see and understand.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 2 — Add a pre-execution guardrail</h3>
+    <p>This step introduces a guardrail using a list of blocked keywords such as salary and compensation.</p>
+    <p>If a learner asks a question that contains one of these blocked terms, the notebook stops the request before the assistant answers. This is called a <strong>pre-execution guardrail</strong> because the control happens before the answering function runs.</p>
+    <p>In real enterprise systems, guardrails can be much more advanced, but this small example clearly shows the core idea: some requests should be blocked or reviewed before the model responds.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 3 — Wrap the assistant with governance logging</h3>
+    <p>This step records what happened during every request. The governed wrapper stores useful details such as:</p>
+    <ul>
+      <li>the learner’s query</li>
+      <li>whether the request was allowed or blocked</li>
+      <li>the final response</li>
+      <li>latency or timing information</li>
+    </ul>
+    <p>The notebook then runs a small test list of example queries so the log fills with several realistic entries.</p>
+    <div class="note"><strong>Why this matters:</strong> A governed system should not be a black box. Logs make the assistant observable and reviewable.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 4 — Turn logs into a table</h3>
+    <p>Once requests have been logged, the notebook converts the log into a pandas DataFrame.</p>
+    <p>This table is important because it turns governance from hidden code into something visible. Learners can quickly inspect:</p>
+    <ul>
+      <li>which requests were blocked</li>
+      <li>which requests were allowed</li>
+      <li>what answers were returned</li>
+      <li>how long the requests took</li>
+    </ul>
+    <p>When governance results are shown in a table, it becomes much easier to debug behavior and explain system decisions.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 5 — Track prompt and system drift</h3>
+    <p>This step defines two different system prompt styles:</p>
+    <ul>
+      <li><strong>Strict</strong> — answer only from the provided policy context</li>
+      <li><strong>Loose</strong> — use the policy context first, but allow broader reasoning or inference if needed</li>
+    </ul>
+    <p>The purpose of this comparison is to show that prompt wording changes the behavior of the assistant. Even when the same model is used, a strict system prompt can lead to grounded answers, while a looser prompt can lead to inferred answers that are not fully supported by evidence.</p>
+    <div class="tip"><strong>Main lesson:</strong> Governance is not only about blocking harmful requests. It is also about controlling how the model reasons and how much freedom it has beyond the retrieved context.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 6 — Compare strict vs loose RAG behavior with Bedrock</h3>
+    <p>This is the main Bedrock RAG step of the notebook.</p>
+    <p>The notebook first retrieves a small set of relevant policy rows for a given question. It then builds a context block and sends the same retrieved evidence to Bedrock twice:</p>
+    <ol>
+      <li>once with the <strong>strict prompt</strong></li>
+      <li>once with the <strong>loose prompt</strong></li>
+    </ol>
+    <p>The notebook uses two types of questions:</p>
+    <ul>
+      <li><strong>A known query</strong> — the answer is clearly present in the policy store</li>
+      <li><strong>An unknown query</strong> — the answer is not fully present in the retrieved context</li>
+    </ul>
+    <p>This creates a useful contrast:</p>
+    <ul>
+      <li>For the known query, both modes may look similar because the evidence is clear.</li>
+      <li>For the unknown query, the strict mode should say it does not know from the retrieved policy context, while the loose mode may produce an inference.</li>
+    </ul>
+    <p>The final comparison table helps learners see how <strong>groundedness</strong> changes when the prompt becomes stricter or looser.</p>
+  </div>
+
+  <div class="card">
+    <h3>Mini-hack — Build one governance improvement</h3>
+    <p>The notebook ends with a small extension activity. Learners are asked to add one more governance feature.</p>
+    <p>Examples include:</p>
+    <ul>
+      <li>adding a human-review topic list</li>
+      <li>adding a new blocked keyword category</li>
+      <li>marking certain queries for escalation rather than blocking them completely</li>
+      <li>adding a confidence label or governance status column to the audit table</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>Wrap-up</h3>
+    <p>The wrap-up section reinforces the central message of the notebook: a useful enterprise assistant needs more than answer generation. It needs controls, logs, comparison views, and evidence-based answering behavior.</p>
+  </div>
+</section>
+
+<section>
+  <h2>4. What learners should notice while running the notebook</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Notice 1 — A simple assistant is not automatically safe</h3>
+      <p>Before guardrails are added, the assistant may try to answer anything. Governance adds policy boundaries.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 2 — Tables make governance visible</h3>
+      <p>The audit DataFrame shows exactly what happened. This is much easier to inspect than raw print output.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 3 — Prompt wording changes groundedness</h3>
+      <p>Strict prompts encourage evidence-based answers. Loose prompts allow more inference and therefore more risk.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>5. Suggested experiments</h2>
+  <div class="card">
+    <ol>
+      <li>Add a new blocked topic and test whether the guardrail catches it.</li>
+      <li>Change the known query and watch how retrieval changes.</li>
+      <li>Change the unknown query and compare the strict and loose answers again.</li>
+      <li>Add a new policy line to the policy store and see whether retrieval and answer quality improve.</li>
+      <li>Add a new audit column to the log DataFrame, such as review status or business risk.</li>
+    </ol>
+  </div>
+</section>
+
+<footer>© 2026 TekFrameworks</footer>
+</div>
+</body>
+</html>

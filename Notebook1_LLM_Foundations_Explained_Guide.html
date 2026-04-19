@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notebook 1 Explained Guide — LLM Foundations</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#f8fbff;
+    --panel-2:#eef4ff;
+    --text:#1f2937;
+    --muted:#566173;
+    --border:#d7e3f4;
+    --accent:#1d4ed8;
+    --accent-2:#0f766e;
+    --soft:#f3f7fd;
+    --warn:#b45309;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.65}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 60px}
+  header{background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid var(--border);border-radius:22px;padding:28px}
+  h1,h2,h3{line-height:1.25;color:#0f172a}
+  h1{margin:0 0 10px;font-size:38px}
+  h2{margin:0 0 10px;font-size:28px}
+  h3{margin:18px 0 8px;font-size:21px}
+  p,li{font-size:17px}
+  .lead{font-size:19px;color:#334155}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .chip{padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--border);font-size:14px;color:#334155}
+  .card,.step{background:#fff;border:1px solid var(--border);border-radius:18px;padding:22px;margin-top:18px;box-shadow:0 6px 20px rgba(15,23,42,.04)}
+  .step-title{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+  .badge{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:18px;margin-top:18px}
+  .span-12{grid-column:span 12}.span-6{grid-column:span 6}.span-4{grid-column:span 4}.span-8{grid-column:span 8}
+  .note,.warning{border-radius:14px;padding:14px 16px;margin:14px 0}
+  .note{background:#eff6ff;border:1px solid #bfd5ff}
+  .warning{background:#fff7ed;border:1px solid #fcd9b6}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border:1px solid var(--border);padding:11px 12px;vertical-align:top;text-align:left}
+  th{background:var(--soft)}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre{background:#0f172a;color:#e2e8f0;padding:16px;border-radius:16px;overflow:auto;font-size:14px}
+  .flow-svg{width:100%;height:auto;border:1px solid var(--border);border-radius:18px;background:#fff;margin-top:12px}
+  .muted{color:var(--muted)}
+  .footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--border);text-align:center;color:#475569;font-size:14px}
+  @media (max-width: 900px){.span-6,.span-4,.span-8,.span-12{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Notebook 1 — LLM Foundations</h1>
+    <p class="lead">This guide explains what the notebook does, why each step exists, and how all steps fit together into a simple enterprise-style LLM application built in SageMaker with Bedrock and S3.</p>
+    <div class="chips">
+      <div class="chip">SageMaker Jupyter Notebook</div>
+      <div class="chip">Amazon Bedrock</div>
+      <div class="chip">S3 File Access</div>
+      <div class="chip">Prompt-to-Action Pipeline</div>
+      <div class="chip">Tool Calling</div>
+      <div class="chip">Validation & Error Handling</div>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2>1. What this notebook is trying to teach</h2>
+    <p>This notebook is not just about sending a prompt to a model. It shows how to wrap a model call inside software logic so that the application stays structured, safe, and understandable. By the end of the notebook, you see a complete workflow: discover available models, test a Bedrock connection, compare prompt styles, convert a natural-language request into a structured plan, validate that plan, call a backend function, manage context from an S3 file, and return a clean result.</p>
+    <div class="note"><strong>Core idea:</strong> an LLM is useful only when it is placed inside an application workflow that checks inputs, controls actions, and explains results.</div>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">1</div><h2 style="margin:0">Step 1 — Discover the available Bedrock models</h2></div>
+    <p>The notebook begins by asking Bedrock which models are available in the current AWS account and region. This is the safest way to start because model availability can vary across regions and accounts. Instead of assuming a model exists, the notebook checks first and turns the response into a readable table.</p>
+    <h3>What this step does</h3>
+    <ul>
+      <li>calls the Bedrock model listing API</li>
+      <li>collects details such as provider, model ID, supported input and output types, and whether streaming is available</li>
+      <li>creates a clean DataFrame so the available models can be inspected in notebook form</li>
+    </ul>
+    <h3>Why it matters</h3>
+    <p>Real projects fail early when developers use a model name copied from memory or from another region. This step reduces that risk. It also helps you understand the difference between models for text generation and models for embeddings.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">2</div><h2 style="margin:0">Step 2 — Secure endpoint usage and Bedrock smoke test</h2></div>
+    <p>This step performs the first live Bedrock call, but it does so with guardrails. The notebook checks whether the requested model is allowed and then sends a very small prompt as a smoke test. The goal is not to solve a difficult task. The goal is to confirm that the notebook can reach Bedrock correctly and safely.</p>
+    <h3>What this step does</h3>
+    <ul>
+      <li>validates the requested model ID before use</li>
+      <li>sends a short prompt through the Bedrock Converse API</li>
+      <li>confirms the request path, permissions, and response parsing all work</li>
+    </ul>
+    <h3>Flow of Step 2</h3>
+    <svg class="flow-svg" viewBox="0 0 1120 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Secure Bedrock call flowchart">
+      <defs>
+        <style>
+          .b{fill:#eef4ff;stroke:#9db9e8;stroke-width:2}
+          .t{font:600 20px Segoe UI, Arial, sans-serif;fill:#0f172a}
+          .s{font:15px Segoe UI, Arial, sans-serif;fill:#334155}
+          .a{stroke:#1d4ed8;stroke-width:3;fill:none;marker-end:url(#m)}
+        </style>
+        <marker id="m" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#1d4ed8"/>
+        </marker>
+      </defs>
+      <rect x="30" y="60" width="180" height="110" rx="18" class="b"/>
+      <text x="120" y="100" text-anchor="middle" class="t">Choose model</text>
+      <text x="120" y="126" text-anchor="middle" class="s">Use the Bedrock model ID</text>
+      <text x="120" y="146" text-anchor="middle" class="s">selected for the notebook</text>
+
+      <rect x="250" y="60" width="200" height="110" rx="18" class="b"/>
+      <text x="350" y="100" text-anchor="middle" class="t">Validate model ID</text>
+      <text x="350" y="126" text-anchor="middle" class="s">Reject unknown or</text>
+      <text x="350" y="146" text-anchor="middle" class="s">disallowed models</text>
+
+      <rect x="500" y="60" width="180" height="110" rx="18" class="b"/>
+      <text x="590" y="100" text-anchor="middle" class="t">Send smoke test</text>
+      <text x="590" y="126" text-anchor="middle" class="s">Tiny prompt through</text>
+      <text x="590" y="146" text-anchor="middle" class="s">Converse API</text>
+
+      <rect x="730" y="60" width="180" height="110" rx="18" class="b"/>
+      <text x="820" y="100" text-anchor="middle" class="t">Parse response</text>
+      <text x="820" y="126" text-anchor="middle" class="s">Read the returned</text>
+      <text x="820" y="146" text-anchor="middle" class="s">assistant content</text>
+
+      <rect x="950" y="60" width="150" height="110" rx="18" class="b"/>
+      <text x="1025" y="100" text-anchor="middle" class="t">Proceed</text>
+      <text x="1025" y="126" text-anchor="middle" class="s">Notebook is ready</text>
+      <text x="1025" y="146" text-anchor="middle" class="s">for larger tasks</text>
+
+      <path d="M210 115 H250" class="a"/>
+      <path d="M450 115 H500" class="a"/>
+      <path d="M680 115 H730" class="a"/>
+      <path d="M910 115 H950" class="a"/>
+    </svg>
+    <div class="note"><strong>Key lesson:</strong> before building a larger workflow, always prove that the Bedrock call path is valid and controlled.</div>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">3</div><h2 style="margin:0">Step 3 — Compare prompt styles and reasoning flows</h2></div>
+    <p>This step shows that prompt structure matters. The notebook asks the model to handle similar tasks in different ways: a plain instruction, a role-based instruction, and a more structured prompt. The goal is to let you observe how the format of a prompt changes the usefulness of the answer.</p>
+    <h3>What this step does</h3>
+    <ul>
+      <li>runs multiple prompt styles against the same model</li>
+      <li>captures the outputs side by side</li>
+      <li>helps you compare clarity, completeness, and actionability</li>
+    </ul>
+    <p>By the end of this step, you should see that a better prompt does not just produce a longer answer. It produces a more usable answer.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">4</div><h2 style="margin:0">Step 4 — Move from prompting to a prompt-to-action design</h2></div>
+    <p>This step introduces the notebook’s main application pattern. Instead of treating the LLM as a chat system only, the notebook treats the LLM as a planner. A user asks for something, the model returns a structured plan, and the rest of the application decides what to do with that plan.</p>
+    <table>
+      <tr><th>Part of the pattern</th><th>Meaning</th></tr>
+      <tr><td>User request</td><td>The natural-language input from the person using the notebook.</td></tr>
+      <tr><td>Structured plan</td><td>A model output that includes intent, whether a tool is needed, and tool arguments.</td></tr>
+      <tr><td>Validation</td><td>Python checks whether the plan is usable and safe.</td></tr>
+      <tr><td>Execution</td><td>An approved backend function performs the action.</td></tr>
+    </table>
+    <div class="note"><strong>What to understand here:</strong> the model does not directly change data or read S3 on its own. The application keeps that control.</div>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">5</div><h2 style="margin:0">Step 5 — Validate the model’s plan before execution</h2></div>
+    <p>The notebook now assumes the model has produced a structured plan. Before anything runs, Python validates that plan. This is one of the most important steps in the notebook because it shows how software protects itself from malformed or unsafe model output.</p>
+    <h3>Validation checks typically include</h3>
+    <ul>
+      <li>all required keys are present</li>
+      <li>the tool name is in the allowlist</li>
+      <li>arguments are in the expected shape</li>
+      <li>the tool decision is a real boolean field, not free-form text</li>
+    </ul>
+    <p>If the plan fails validation, the application stops the action and returns an error cleanly instead of executing something risky.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">6</div><h2 style="margin:0">Step 6 — Define the backend tools</h2></div>
+    <p>This step defines the real Python functions that the application allows the model to trigger. In this notebook, the examples are intentionally simple because this is the first class. One function can create a small support ticket, and another can read a CSV file from S3 and look up a user record.</p>
+    <p>The important distinction is this: the LLM does not execute business actions directly. It selects a tool and supplies arguments. Python performs the actual work.</p>
+    <div class="warning"><strong>Why this matters:</strong> this design separates reasoning from execution. The model suggests; the code decides and acts.</div>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">7</div><h2 style="margin:0">Step 7 — Run the full prompt-to-action pipeline</h2></div>
+    <p>This step ties together the earlier steps into one working application loop:</p>
+    <ol>
+      <li>receive a user request</li>
+      <li>ask the LLM to create a structured plan</li>
+      <li>validate the plan</li>
+      <li>execute the approved backend tool</li>
+      <li>capture the result in a DataFrame</li>
+    </ol>
+    <p>The resulting table acts as a mini audit trail. It shows what the request was, how the model interpreted it, which tool was chosen, and what result came back.</p>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">8</div><h2 style="margin:0">Step 8 — Manage context from S3 before sending it to the model</h2></div>
+    <p>This step introduces context window management. The notebook reads a file from S3, turns the contents into text, breaks that text into chunks, estimates size, and keeps only the amount that fits inside a chosen budget. This is the same design idea used later in RAG systems.</p>
+    <h3>Why this step is important</h3>
+    <ul>
+      <li>LLMs cannot safely accept unlimited text in every call</li>
+      <li>large documents must usually be chunked before use</li>
+      <li>a notebook should show how to control prompt size instead of blindly sending everything</li>
+    </ul>
+  </section>
+
+  <section class="step">
+    <div class="step-title"><div class="badge">9</div><h2 style="margin:0">Step 9 — Error handling and structured failure reporting</h2></div>
+    <p>The final step shows how the notebook reports errors in a controlled way. Instead of crashing with raw exceptions, the code wraps failures into a clearer output format. This makes debugging easier and makes the application behavior more professional.</p>
+    <p>Typical failures covered here include invalid model IDs, malformed plans, missing fields, or S3 access issues.</p>
+    <div class="note"><strong>Final lesson:</strong> a usable LLM application is not defined only by good answers. It is also defined by how cleanly it handles bad inputs and failures.</div>
+  </section>
+
+  <section class="card">
+    <h2>2. End-to-end view of the notebook</h2>
+    <table>
+      <tr><th>Step</th><th>Main purpose</th><th>What you should learn from it</th></tr>
+      <tr><td>1</td><td>List Bedrock models</td><td>Check model availability instead of assuming it.</td></tr>
+      <tr><td>2</td><td>Smoke-test Bedrock safely</td><td>Wrap model calls in validation and governance.</td></tr>
+      <tr><td>3</td><td>Compare prompts</td><td>Prompt structure changes output quality and usefulness.</td></tr>
+      <tr><td>4</td><td>Introduce prompt-to-action</td><td>Use the model as a planner inside an application workflow.</td></tr>
+      <tr><td>5</td><td>Validate the plan</td><td>Never trust raw model output without checks.</td></tr>
+      <tr><td>6</td><td>Define allowed tools</td><td>Separate reasoning from execution.</td></tr>
+      <tr><td>7</td><td>Run the pipeline</td><td>See the full request → plan → execute pattern.</td></tr>
+      <tr><td>8</td><td>Manage context size</td><td>Prepare for RAG-style document usage.</td></tr>
+      <tr><td>9</td><td>Handle failures</td><td>Robust systems explain errors clearly.</td></tr>
+    </table>
+  </section>
+
+  <div class="footer">© 2026 TekFrameworks</div>
+</div>
+</body>
+</html>
