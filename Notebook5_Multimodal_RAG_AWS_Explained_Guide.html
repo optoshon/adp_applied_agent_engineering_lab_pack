@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notebook 5 — Multimodal RAG on AWS Bedrock</title>
+
+<style>
+:root{--ink:#1f2937;--muted:#4b5563;--line:#d1d5db;--panel:#f8fafc;--brand:#1d4ed8}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Arial,sans-serif;background:#fff;color:var(--ink);line-height:1.6}
+header{background:linear-gradient(90deg,#eff6ff,#ecfeff);border-bottom:1px solid var(--line);padding:36px 24px 28px}
+.wrap{max-width:1100px;margin:0 auto}
+h1{margin:0 0 8px;font-size:34px;color:#0f172a}
+.subtitle{color:var(--muted);font-size:18px}
+section{padding:28px 24px}
+h2{margin:0 0 14px;font-size:26px;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:8px}
+h3{margin:18px 0 8px;font-size:21px;color:#0f172a}
+.card{background:var(--panel);border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin:16px 0}
+.note{background:#fff7ed;border-left:5px solid #f59e0b;padding:14px 16px;border-radius:10px}
+.tip{background:#ecfeff;border-left:5px solid #14b8a6;padding:14px 16px;border-radius:10px}
+.flow{display:flex;flex-direction:column;align-items:center;gap:14px;margin:18px 0}
+.flow-row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px}
+.box{min-width:220px;max-width:270px;background:#fff;border:2px solid #bfdbfe;border-radius:16px;padding:14px 16px;box-shadow:0 4px 14px rgba(0,0,0,0.05);text-align:center}
+.box strong{display:block;color:#1d4ed8;margin-bottom:4px}
+.arrow{font-size:28px;color:#2563eb;line-height:1}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}
+th{background:#eff6ff;text-align:left}
+footer{margin-top:24px;border-top:1px solid var(--line);text-align:center;color:#6b7280;padding:22px;font-size:14px}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Notebook 5 — Multimodal RAG on AWS Bedrock</h1>
+    <div class="subtitle">A student-friendly guide to the SageMaker notebook that combines Docling extraction, Bedrock multimodal understanding, embeddings, retrieval, and final grounded answer generation.</div>
+  </div>
+</header>
+<div class="wrap">
+<section>
+  <h2>1. What this notebook does</h2>
+  <div class="card">
+    <p>This notebook teaches a full <strong>multimodal RAG</strong> pipeline on AWS.</p>
+    <p>The notebook reads source files from S3, extracts multiple modalities with Docling, converts each modality into retrieval-ready content, and finally sends the best multimodal evidence to a Bedrock model for grounded answer generation.</p>
+    <p>The three modalities used are:</p>
+    <ul>
+      <li><strong>Text</strong> extracted from documents</li>
+      <li><strong>Tables</strong> extracted as structured tabular data</li>
+      <li><strong>Images</strong> extracted from figures and then converted into structured JSON with a Bedrock vision-language model</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>2. End-to-end flow</h2>
+  <div class="flow">
+    <div class="flow-row">
+      <div class="box"><strong>Step 1</strong>Set AWS region, S3 path, and Bedrock model IDs.</div>
+      <div class="box"><strong>Step 2</strong>List Bedrock models and choose embedding, vision, and answer models.</div>
+      <div class="box"><strong>Step 3</strong>Download source documents from S3 into a temporary SageMaker workspace.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 4</strong>Use Docling to extract text blocks, tables, and images.</div>
+      <div class="box"><strong>Step 5</strong>Chunk text and tables into retrieval-ready units.</div>
+      <div class="box"><strong>Step 6</strong>Send extracted images to Bedrock and convert them into strict JSON descriptions.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 7</strong>Create embeddings for every modality and build an in-memory retrieval matrix.</div>
+      <div class="box"><strong>Step 8</strong>Retrieve top evidence per modality and build a final context block.</div>
+      <div class="box"><strong>Step 9</strong>Send the multimodal context to Bedrock and generate the final RAG answer.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="flow-row">
+      <div class="box"><strong>Step 10</strong>Review observability tables such as extraction manifest, retrieval ranking, and run summary.</div>
+      <div class="box"><strong>Mini-hack</strong>Change the question and observe how retrieval shifts across modalities.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>3. Step-by-step explanation</h2>
+
+  <div class="card">
+    <h3>Step 0 — Install dependencies</h3>
+    <p>This step installs the packages needed for the notebook. The important categories are Docling for extraction, boto3 for AWS access, and pandas/numpy/Pillow/python-docx for handling notebook data.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 1 — Imports and notebook utilities</h3>
+    <p>This step imports the Python packages used across the notebook. The notebook uses DataFrames heavily so that each stage stays visible and easy to understand.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 2 — Configuration</h3>
+    <p>This step sets the AWS region, S3 location, model IDs, chunk sizes, and temporary workspace. It is the only cell learners usually need to edit before running the notebook.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 3 — Bedrock model discovery</h3>
+    <p>This step lists the Bedrock models available in the current region and tries to select one embedding model, one image-capable model, and one answer-generation model.</p>
+    <div class="tip"><strong>Main idea:</strong> model availability varies by region and account, so discovery is useful before building the rest of the pipeline.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 4 — S3 download and temporary workspace</h3>
+    <p>This step reads the source file list from S3 and downloads the files into a temporary notebook workspace. The notebook uses S3 only for input and does not write outputs back to S3.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 5 — Docling extraction</h3>
+    <p>This is the multimodal extraction step. For each source document, Docling extracts text blocks, tables, and images. The notebook stores them in DataFrames so learners can inspect each modality separately.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 6 — Text chunking and table chunking</h3>
+    <p>Text and tables are prepared differently. Text is split into overlapping chunks. Tables are split by rows with overlap while preserving headers and table identity. This creates retrieval-ready content for both modalities.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 7 — Image understanding with Bedrock</h3>
+    <p>Each extracted image is sent to a Bedrock multimodal model. The model returns strict JSON that describes the image. This JSON becomes the searchable representation of the image for later retrieval.</p>
+    <div class="note"><strong>Why this matters:</strong> the notebook retrieves semantic descriptions of images, not raw image pixels.</div>
+  </div>
+
+  <div class="card">
+    <h3>Step 8 — Build one multimodal corpus</h3>
+    <p>This step merges text chunks, table chunks, and image-description chunks into one combined corpus. Each row carries a stable chunk ID, modality label, source key, and searchable content.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 9 — Bedrock embeddings and in-memory retrieval</h3>
+    <p>Every row in the multimodal corpus is converted into an embedding vector using a Bedrock embedding model. The notebook keeps those embeddings in memory and uses cosine similarity for retrieval instead of a local vector database.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 10 — Multimodal retrieval and context building</h3>
+    <p>The notebook retrieves the best evidence for the learner’s question. It picks top chunks per modality, merges them, applies a lightweight rerank score, and creates a final context block with indices such as [1], [2], and [3].</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 11 — Final multimodal RAG answer</h3>
+    <p>The learner’s question and the final multimodal context are sent to a Bedrock text model. The prompt instructs the model to answer only from the provided evidence and to cite supporting blocks.</p>
+  </div>
+
+  <div class="card">
+    <h3>Step 12 — Observability tables</h3>
+    <p>The notebook ends by showing run summary, extraction manifest, and retrieval ranking tables. These make the pipeline easier to explain and easier to debug.</p>
+  </div>
+
+  <div class="card">
+    <h3>Mini-hack</h3>
+    <p>Ask different questions and observe whether the final answer relies more on text, tables, or image descriptions. Then change retrieval settings and compare the results.</p>
+  </div>
+</section>
+
+<section>
+  <h2>4. What learners should notice while running the notebook</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Notice 1 — Multimodal RAG is more than OCR</h3>
+      <p>The notebook does not just read images as text. It creates structured semantic descriptions of images and retrieves those descriptions alongside text and tables.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 2 — Different modalities need different preparation</h3>
+      <p>Text is chunked by content length, tables are chunked by rows, and images are converted into JSON first. That is why multimodal RAG usually has separate modality stages.</p>
+    </div>
+    <div class="card">
+      <h3>Notice 3 — The final answer is grounded in a mixed context</h3>
+      <p>The final context can contain evidence from text, tables, and image descriptions at the same time. That is the main advantage of multimodal retrieval.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>5. Suggested questions for practice</h2>
+  <div class="card">
+    <ul>
+      <li>What policy details are described in the documents?</li>
+      <li>What values or limits are shown in the extracted tables?</li>
+      <li>Does any figure or diagram add detail that is not obvious from text alone?</li>
+      <li>Which modality contributed the most useful context for this answer?</li>
+    </ul>
+  </div>
+</section>
+<footer>© 2026 TekFrameworks</footer>
+</div>
+</body>
+</html>
